@@ -25,12 +25,12 @@ node {
    
    stage('docker build/push') {            
      withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
-       sh """
+       sh '''
          export DOCKER_API_VERSION=1.40
          echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USER" --password-stdin
          docker build -t sswaminath/docker-nodejs-demo:${commit_id} .
          docker push sswaminath/docker-nodejs-demo:${commit_id}
-       """
+       '''
      }                                     
    }                                       
 }
