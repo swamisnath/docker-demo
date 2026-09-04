@@ -23,14 +23,21 @@ node {
      }
    }                                     
    
-   stage('docker build/push') {            
+    stage('docker build/push') {            
      withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
+       
+       // 1. Secure login block (using single quotes so Groovy doesn't touch the password)
        sh '''
          export DOCKER_API_VERSION=1.40
          echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+       '''
+
+       // 2. Build and push block (using double quotes so Groovy can read the commit_id variable)
+       sh """
+         export DOCKER_API_VERSION=1.40
          docker build -t sswaminath/docker-nodejs-demo:${commit_id} .
          docker push sswaminath/docker-nodejs-demo:${commit_id}
-       '''
+       """
      }                                     
-   }                                       
+   }                                      
 }
