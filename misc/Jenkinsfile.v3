@@ -1,0 +1,36 @@
+node {
+   def commit_id
+   
+   stage('Preparation') {
+     checkout scm
+     sh "git rev-parse --short HEAD > .git/commit-id"
+     commit_id = readFile('.git/commit-id').trim()
+   }
+   
+   stage('test') {
+     // Pulls a Node 7 container image to match your tools preference
+     sh 'docker run --rm -v "$(pwd)":/app -w /app node:7-alpine sh -c "npm install --only=dev && npm test"'
+   }
+   
+   stage('test with a DB') {
+     sh 'docker run -d --name test-mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql'
+     try {
+         // Runs test tied to the MySQL container using Node 7
+         sh 'docker run --rm --link test-mysql:mysql -v "$(pwd)":/app -w /app node:7-alpine sh -c "npm install --only=dev && npm test"'
+     } finally {
+         // Cleans up the database container regardless of test success/failure
+         sh 'docker stop test-mysql && docker rm test-mysql'
+     }
+   }                                     
+   
+   stage('docker build/push') {            
+     withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
+       sh """
+         export DOCKER_API_VERSION=1.40
+         echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+         docker build -t wardviaene/docker-nodejs-demo:${commit_id} .
+         docker push sswaminath/docker-nodejs-demo:${commit_id}
+       """
+     }                                     
+   }                                       
+}
